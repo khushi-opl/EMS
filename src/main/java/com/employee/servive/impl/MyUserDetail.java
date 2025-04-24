@@ -30,8 +30,8 @@ public class MyUserDetail implements UserDetails {
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
 		
-//		return Collections.singleton(new SimpleGrantedAuthority(user.getRole().toString()));
-		return null;
+		return Collections.singleton(new SimpleGrantedAuthority(user.getRole().toString()));
+//		return null;
 	
 	}
 

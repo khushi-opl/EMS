@@ -32,7 +32,9 @@ public class SecurityConfig {
 				.httpBasic(AbstractHttpConfigurer::disable)         
 				.formLogin(AbstractHttpConfigurer::disable)         
 				.authorizeHttpRequests(authorizeRequests -> authorizeRequests       
-						.requestMatchers( "/user/login","/user/saveUser","/user/generate-bulkstudent/**","/user/getCurrentUser/**","/user/getUserById/**").permitAll()    
+						.requestMatchers( "/user/login","/user/saveUser","/user/generate-bulkstudent/**",
+								"/user/getCurrentUser/**","/user/getUserById/**","/user/getUsers/**",
+								"/user/forgotPassword/**","/user/sendLink/**","/user/search/**").permitAll()    
 //						.requestMatchers("/user/saveUser").hasAuthority("ADMIN")
 						.anyRequest().authenticated())      
 				.sessionManagement(sessionManagement -> sessionManagement         

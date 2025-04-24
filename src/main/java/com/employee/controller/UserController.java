@@ -15,10 +15,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.employee.domain.UpdatePassProxy;
 import com.employee.domain.User;
 import com.employee.proxy.LoginRequest;
 import com.employee.proxy.LoginResponse;
@@ -51,6 +53,22 @@ public class UserController {
 		 return ResponseEntity.status(HttpStatus.OK).body(service.getCurrentUser(username));
 		 
 	    }
+	 @PostMapping("/forgotPassword/{token}")
+	 public String resetPassword(@PathVariable String token,@RequestBody UpdatePassProxy password) {
+	        return service.resetPassword(token,password);
+	    }
+	 @GetMapping("/sendLink/{name}")
+	 public String sendLink(@PathVariable String name) {
+	        return service.sendLink(name);
+	    }
+	 @GetMapping("/search/{page}/{size}/{name}")
+	    public Page<User> searchStudents(
+	        @PathVariable int page, 
+	        @PathVariable int size, 
+	        @PathVariable String name
+	    ) {
+	        return service.searchStudents(page, size, name);
+	    }
 	
 	 @GetMapping("/getUserById/{id}")
 	    public ResponseEntity<UserProxy> getUserById(@PathVariable Long id) {
@@ -59,9 +77,9 @@ public class UserController {
 	 @PostMapping("/saveUser")
 	 public ResponseEntity<String> saveUser(@RequestPart("user") UserProxy userProxy, @RequestPart("profileImage") MultipartFile profileImage) {
 			System.err.println("controller");
-			return new ResponseEntity<String>(service.saveUser(userProxy, profileImage), HttpStatus.OK);
-					
+			return new ResponseEntity<String>(service.saveUser(userProxy, profileImage), HttpStatus.OK);			
 		}
+	 
 	 @PostMapping("/login")
 		public ResponseEntity <LoginResponse> login(@RequestBody LoginRequest logReq)
 		{
@@ -78,7 +96,11 @@ public class UserController {
 	    }
 	 @GetMapping("/getAllstdByPage/{page}/{student}/{sortBy}")
 		public Page<User> getAllstdByPage(@PathVariable Integer page,@PathVariable Integer student,@PathVariable String sortBy) {
-			return service.getAllstdByPage(student, page,sortBy);
+			return service.getAllstdByPage(student, page,sortBy);	
+		}
+	 @GetMapping("/getUsers/{page}/{student}/{sortBy}")
+		public Page<User> getUsers(@PathVariable Integer page,@PathVariable Integer student,@PathVariable String sortBy) {
+			return service.getUsers(student, page,sortBy);
 			
 		}
 
