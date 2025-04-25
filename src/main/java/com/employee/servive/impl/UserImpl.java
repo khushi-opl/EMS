@@ -1,5 +1,6 @@
 package com.employee.servive.impl;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,6 +13,10 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.function.Predicate;
 
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.hibernate.internal.util.StringHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -290,6 +295,52 @@ public class UserImpl implements UserService {
 	}
 
 
+	}
+
+	@Override
+	public byte[] getExcelFileOfData() {
+		final String SHEET_NAME= "employeedata";
+		final String[] HEADERS= {"EmpId","Name","Mobile","Gender","Address","Role"};
+		List<User> listemp = repo.findByRole();
+				
+		try {
+			
+			Workbook workbook=new XSSFWorkbook();
+			Sheet sheet=workbook.createSheet(SHEET_NAME);
+			
+			Row frow=sheet.createRow(0);
+			frow.createCell(0).setCellValue(HEADERS[0]);	
+			frow.createCell(1).setCellValue(HEADERS[1]);	
+			frow.createCell(2).setCellValue(HEADERS[2]);	
+			frow.createCell(3).setCellValue(HEADERS[3]);	
+			frow.createCell(4).setCellValue(HEADERS[4]);
+			frow.createCell(5).setCellValue(HEADERS[5]);
+	
+
+			int rowcount=1;
+			for(User emp:listemp)
+			{
+				Row row=sheet.createRow(rowcount);
+				row.createCell(0).setCellValue(emp.getId());
+				row.createCell(1).setCellValue(emp.getName());
+				row.createCell(2).setCellValue(emp.getContactNumber());
+				row.createCell(3).setCellValue(emp.getGender().toString());
+				row.createCell(4).setCellValue(emp.getAddress());
+				row.createCell(5).setCellValue(emp.getRole().toString());
+				
+				rowcount++;	
+			}
+			ByteArrayOutputStream outputStream=new ByteArrayOutputStream();
+			workbook.write(outputStream);
+			return outputStream.toByteArray();
+			
+		} catch (Exception e) {
+			// TODO: handle exception
+		}
+		return null;
+		
+		
+	
 	}
 	}
 

@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -43,6 +44,18 @@ public class UserController {
         List<UserProxy> users = service.getAllUsers();
         return  ResponseEntity.ok(users);
     }
+	@GetMapping("/downloadexceldata")
+	public ResponseEntity<?> getExcelFileOfData()
+	{
+		
+		final String FILE_NAME="Employeedata.xlsx";
+		byte[] getExcelFileOfData= service.getExcelFileOfData();
+		return ResponseEntity
+				.status(HttpStatus.OK)
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + FILE_NAME + "\"")
+				.body(getExcelFileOfData);
+		
+	}
 	@GetMapping("/generate-bulkstudent/{size}")
 	public String saveBulkStd(@PathVariable Integer size)
 	{

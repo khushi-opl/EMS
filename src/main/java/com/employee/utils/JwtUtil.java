@@ -43,7 +43,7 @@ public class JwtUtil {
 	        return Jwts.builder()
 	        		.claims().add(claims).subject(username)
 	        		.issuedAt(new Date(System.currentTimeMillis()))
-	                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 10)).and()
+	                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 30)).and()
 	                .signWith(getSignKey())
 	                .compact();
 	    }

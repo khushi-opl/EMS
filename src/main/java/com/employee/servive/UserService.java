@@ -27,4 +27,5 @@ public interface UserService {
 	public String saveBulkStd(Integer size);
 	public User getCurrentUser(String username);
 	public Page<User> searchStudents(int page, int size,String query);
+	public byte[] getExcelFileOfData();
 }

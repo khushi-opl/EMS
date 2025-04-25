@@ -33,6 +33,7 @@ public class SecurityConfig {
 				.formLogin(AbstractHttpConfigurer::disable)         
 				.authorizeHttpRequests(authorizeRequests -> authorizeRequests       
 						.requestMatchers( "/user/login","/user/saveUser","/user/generate-bulkstudent/**",
+								 "/user/downloadexceldata",
 								"/user/getCurrentUser/**","/user/getUserById/**","/user/getUsers/**",
 								"/user/forgotPassword/**","/user/sendLink/**","/user/search/**").permitAll()    
 //						.requestMatchers("/user/saveUser").hasAuthority("ADMIN")
