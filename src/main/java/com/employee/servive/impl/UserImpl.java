@@ -38,6 +38,7 @@ import com.employee.domain.UpdatePassProxy;
 import com.employee.domain.User;
 import com.employee.enums.GenderEnum;
 import com.employee.enums.RoleEnum;
+import com.employee.exception.EmptyListException;
 import com.employee.proxy.LoginRequest;
 import com.employee.proxy.LoginResponse;
 import com.employee.proxy.UserProxy;
@@ -46,6 +47,7 @@ import com.employee.repo.UserRepo;
 import com.employee.servive.UserService;
 import com.employee.utils.JwtUtil;
 import com.employee.utils.MapperUtil;
+
 import com.github.javafaker.Faker;
 
 import jakarta.persistence.EntityManager;
@@ -82,7 +84,13 @@ public class UserImpl implements UserService {
 	public List<UserProxy> getAllUsers() {
 
 		List<User> alldataList = repo.getAllUsers();
-		return mapper.convertor(repo.findAll(), UserProxy.class);
+		
+		if(alldataList.isEmpty()) {
+			throw new EmptyListException("List is empty","101");
+		}
+		else {
+			return mapper.convertor(repo.findAll(), UserProxy.class);
+		}
 //		return alldataList;
 	}
 
