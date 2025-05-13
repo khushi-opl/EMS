@@ -14,30 +14,42 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.employee.domain.User;
+import com.employee.enums.RoleEnum;
 @Repository
 public interface UserRepo extends JpaRepository<User, Long> {
 	Page<User> findByUsernameContaining(String username, PageRequest pageRequest);
 
+	Page<User> findByIsActiveTrue(RoleEnum role,Pageable pageable);
+	
 	Optional<User> findByUsername(String username);
 	
-	@Query(value = "SELECT u FROM User u WHERE u.role = 'USER'")
-	List<User> findByRole();
+	Page<User> findAllByRoleAndIsActiveTrue(RoleEnum role, Pageable pageable);
 	
-	@Query(value= "SELECT u FROM User u WHERE u.username = :username")
-	User getUserByUsernameAndRole(@Param("username") String username);
+	List<User> findAllByRole(RoleEnum role);
+	
+    boolean existsByEmail(String email);
+    
+    Page<User> findByEmailContaining(String email, Pageable pageable);
+   
 
-//	@Query(value = "CALL getAllUsers()" ,nativeQuery = true)
+	
+    
+	
+	
+	
+	
+	
+//	User findById();	
+//	@Query(value = "SELECT u FROM User u WHERE u.role = 'USER'")	
+//	@Query(value= "SELECT u FROM User u WHERE u.username = :username")
+//	User findByUsername( String username);
+//	@Query(value = "SELECT u FROM User u")
 //	List<User> getAllUsers();
-	
-	@Procedure(procedureName ="getAllUsers")
-	List<User> getAllUsers();
-	
+//	@Procedure(procedureName ="getAllUsers")
+//	List<User> getAllUsers();	
 //	@Query(value = "CALL getStudentById(:idValue)",nativeQuery = true)
-//	User getStudentById(@Param ("idValue") Long idValue);
+//	User getStudentById(@Param ("idValue") Long idValue);	
+//	@Procedure(procedureName = "getStudentById")
+//	 @Query("SELECT u FROM User u WHERE u.role = 'USER'")
 	
-	@Procedure(procedureName = "getStudentById")
-	User getStudentById(@Param("id_data") Long id);
-
-	 @Query("SELECT u FROM User u WHERE u.role = 'USER'")
-	Page<User> findByRole(String role, Pageable pageable);
 }

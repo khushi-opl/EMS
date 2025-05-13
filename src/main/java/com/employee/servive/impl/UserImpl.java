@@ -6,12 +6,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.Predicate;
+
 
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -23,6 +26,8 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -38,6 +43,7 @@ import com.employee.domain.UpdatePassProxy;
 import com.employee.domain.User;
 import com.employee.enums.GenderEnum;
 import com.employee.enums.RoleEnum;
+import com.employee.exception.CsvValidationException;
 import com.employee.exception.EmptyListException;
 import com.employee.proxy.LoginRequest;
 import com.employee.proxy.LoginResponse;
@@ -45,9 +51,10 @@ import com.employee.proxy.UserProxy;
 import com.employee.repo.ResetPwRepo;
 import com.employee.repo.UserRepo;
 import com.employee.servive.UserService;
+import com.employee.utils.AESutils;
+import com.employee.utils.DocumentHelper;
 import com.employee.utils.JwtUtil;
 import com.employee.utils.MapperUtil;
-
 import com.github.javafaker.Faker;
 
 import jakarta.persistence.EntityManager;
@@ -56,11 +63,13 @@ import jakarta.transaction.Transactional;
 @Service
 public class UserImpl implements UserService {
 
+//    private final AESutils AESutils;
+
 	@Autowired
 	public UserRepo repo;
 
-//	 @Autowired
-//	 private JavaMailSender emailSender; 
+	 @Autowired
+	 private DocumentHelper documentHelper;
 
 	@Autowired
 	private MapperUtil mapper;
@@ -79,24 +88,14 @@ public class UserImpl implements UserService {
 	@Autowired
 	private EntityManager entityManager;
 
-	@Override
-
-	public List<UserProxy> getAllUsers() {
-
-		List<User> alldataList = repo.getAllUsers();
-		
-		if(alldataList.isEmpty()) {
-			throw new EmptyListException("List is empty","101");
-		}
-		else {
-			return mapper.convertor(repo.findAll(), UserProxy.class);
-		}
-//		return alldataList;
-	}
+//    UserImpl(AESutils AESutils) {
+//        this.AESutils = AESutils;
+//    }
 
 	@Override
 	public UserProxy getUserById(Long id) {
 		User user = repo.findById(id).orElseThrow(() -> new RuntimeException("Id Not Found"));
+		System.out.println(user);
 		return mapper.convertor(user, UserProxy.class);
 	}
 
@@ -109,7 +108,7 @@ public class UserImpl implements UserService {
 		try {
 
 			String inPath = new ClassPathResource("").getFile().getAbsolutePath();
-			path = inPath + File.separator + "static" + File.separator + "documents";
+			path = inPath + File.separator + "static" + File.separator + "img";
 
 			File f = new File(path);
 			if (!f.exists()) {
@@ -133,6 +132,7 @@ public class UserImpl implements UserService {
 
 		userProxy.setPassword(encoder.encode(userProxy.getPassword()));
 		User user = mapper.convertor(userProxy, User.class);
+		user.setIsActive(true);
 
 		repo.save(user);
 		return "saved successfully...";
@@ -140,14 +140,15 @@ public class UserImpl implements UserService {
 	}
 
 	@Override
-	public String updateUser(Long id, UserProxy proxy) {
+	public String updateUser(Long id, UserProxy proxy,MultipartFile profileImage) {
 		Optional<User> std = repo.findById(id);
-		System.err.println(id);
+		System.out.println(id);
 		if (std.isPresent()) {
+			
 			User user = std.get();
 			Predicate<String> predicate = s -> Objects.isNull(s) || s.equals("");
 			user.setName(predicate.test(proxy.getName()) ? user.getName() : proxy.getName());
-			user.setDob(predicate.test(proxy.getDob()) ? user.getDob() : proxy.getDob());
+			user.setDob(proxy.getDob());
 			user.setUsername(predicate.test(proxy.getUsername()) ? user.getUsername() : proxy.getUsername());
 			if (proxy.getGender() != null) {
 				user.setGender(proxy.getGender());
@@ -159,12 +160,49 @@ public class UserImpl implements UserService {
 			}
 			user.setAddress(predicate.test(proxy.getAddress()) ? user.getAddress() : proxy.getAddress());
 			user.setEmail(predicate.test(proxy.getEmail()) ? user.getEmail() : proxy.getEmail());
-//			user.setProfileImage(predicate.test(proxy.getProfileImage())? user.getProfileImage():proxy.getProfileImage());
+		
+			if (!profileImage.isEmpty() ) {
+				
+				String fileName = null;
+				String path = null;
+
+				try {
+					
+					String inPath = new ClassPathResource("").getFile().getAbsolutePath();
+					path = inPath + File.separator + "static" + File.separator + "img";
+
+					File f = new File(path);
+					if (!f.exists()) {
+						f.mkdirs();
+					}
+					String ext=profileImage.getOriginalFilename().substring(profileImage.getOriginalFilename().lastIndexOf("."));
+					fileName =UUID.randomUUID().toString() +ext;
+					String absolutePath = path + File.separator + fileName;
+
+					Files.copy(profileImage.getInputStream(), Paths.get(absolutePath), StandardCopyOption.REPLACE_EXISTING);
+
+					user.setFileName(fileName);
+					user.setFileData(profileImage.getBytes());
+					user.setFileSize((profileImage.getSize() / 1000) + "kb");
+					user.setContentType(profileImage.getContentType());
+					System.out.println("Image saved to: " + absolutePath);
+					String fileUrl = "/static/documents/" + fileName;
+
+				} catch (java.io.IOException e) {
+					e.printStackTrace();
+				}
+
+			}else {
+				System.err.println("Image not availabble");
+				
+			}
+//			user.setProfileImage(predicate.test(proxy.getFileData())? user.getFileData():proxy.getFileData());
 			user.setContactNumber(
 					predicate.test(proxy.getContactNumber()) ? user.getContactNumber() : proxy.getContactNumber());
 			user.setPinCode(predicate.test(proxy.getPinCode()) ? user.getPinCode() : proxy.getPinCode());
 			repo.save(user);
-			System.err.println(user);
+			System.out.println("print");
+			System.out.println("out");
 
 			return "Updated successfully";
 
@@ -174,22 +212,25 @@ public class UserImpl implements UserService {
 
 	@Override
 	public String deleteUser(Long id) {
-		repo.deleteById(id);
+		
+		User user = repo.findById(id).get();
+		user.setIsActive(false);
+		repo.save(user);
 		return "deleted successfully";
 
 	}
 
 	@Override
 	public Page<User> getAllstdByPage(Integer student, Integer page, String sortBy) {
-		Page<User> all = repo.findAll(PageRequest.of(page - 1, student, Sort.by(sortBy)));
-		return all;
+		PageRequest pageRequest = PageRequest.of(page - 1, student, Sort.by(sortBy));
+		return repo.findAllByRoleAndIsActiveTrue(RoleEnum.ADMIN, pageRequest);
+//		Page<User> all = repo.findByIsActiveTrue(RoleEnum.ADMIN,PageRequest.of(page - 1, student, Sort.by(sortBy)));
+	
 
 	}
 
 	@Override
 	public LoginResponse login(LoginRequest logReq) {
-
-		System.err.println("impl");
 		System.out.println(logReq.toString());
 		Authentication auth = new UsernamePasswordAuthenticationToken(logReq.getUsername(), logReq.getPassword());
 		Authentication authresult = authtAuthenticationManager.authenticate(auth);
@@ -212,16 +253,20 @@ public class UserImpl implements UserService {
 	private User generateStd() {
 		User user = new User();
 
+		
 		user.setName(faker.name().fullName());
-		user.setDob(faker.date().birthday().toString());
+		user.setDob(faker.date().birthday(18,20));
 		user.setUsername(faker.name().fullName());
-		user.setPassword(faker.internet().password());
+		user.setPassword(encoder.encode(faker.internet().password()));
+//		user.setPassword(faker.internet().password());
 		user.setGender(GenderEnum.values()[random.nextInt(GenderEnum.values().length)]);
 		user.setAddress(faker.address().fullAddress());
 		user.setEmail(faker.internet().emailAddress());
 		user.setContactNumber(faker.phoneNumber().phoneNumber());
 		user.setPinCode(faker.address().zipCode());
 		user.setRole(RoleEnum.values()[random.nextInt(RoleEnum.values().length)]);
+		user.setIsActive(true);
+
 
 		String IMAGE_DIR = "src/main/resources/static/img";
 		Random r = new Random();
@@ -256,13 +301,17 @@ public class UserImpl implements UserService {
 
 	@Override
 	public User getCurrentUser(String username) {
-		return repo.getUserByUsernameAndRole(username);
+		Optional<User> optionalUser= repo.findByUsername(username);
+		if(optionalUser.isPresent()) {
+			return optionalUser.get();
+		}
+		return null;
 
 	}
 
 	public Page<User> getUsers(Integer student, Integer page, String sortBy) {
 		PageRequest pageRequest = PageRequest.of(page - 1, student, Sort.by(sortBy));
-		return repo.findByRole("USER", pageRequest);
+		return repo.findAllByRoleAndIsActiveTrue(RoleEnum.USER, pageRequest);
 
 	}
 
@@ -298,18 +347,21 @@ public class UserImpl implements UserService {
 
 	@Override
 	public Page<User> searchStudents(int page, int size, String query) {
- {
-	 return repo.findByUsernameContaining(query, PageRequest.of(page-1, size));
-	}
-
-
+ 
+		PageRequest pageable = PageRequest.of(page - 1, size);
+		 if (query.contains("@")) {
+		        return repo.findByEmailContaining(query, pageable);
+		    } 
+		 else  {
+		        return repo.findByUsernameContaining(query, pageable);
+		    } 		    
 	}
 
 	@Override
 	public byte[] getExcelFileOfData() {
 		final String SHEET_NAME= "employeedata";
 		final String[] HEADERS= {"EmpId","Name","Mobile","Gender","Address","Role"};
-		List<User> listemp = repo.findByRole();
+		List<User> listemp = repo.findAllByRole(RoleEnum.USER);
 				
 		try {
 			
@@ -322,8 +374,7 @@ public class UserImpl implements UserService {
 			frow.createCell(2).setCellValue(HEADERS[2]);	
 			frow.createCell(3).setCellValue(HEADERS[3]);	
 			frow.createCell(4).setCellValue(HEADERS[4]);
-			frow.createCell(5).setCellValue(HEADERS[5]);
-	
+			frow.createCell(5).setCellValue(HEADERS[5]);	
 
 			int rowcount=1;
 			for(User emp:listemp)
@@ -345,56 +396,74 @@ public class UserImpl implements UserService {
 		} catch (Exception e) {
 			// TODO: handle exception
 		}
-		return null;
+		return null;	
+	}
+
+	@Override
+	public ResponseEntity<?> downloadExcelFormat(String format) {
+		try {
+			format = format.toLowerCase();
+			if(!format.equals("csv") && !format.equals("xlsx")) {
+				return ResponseEntity.badRequest().body(Map.of("error","Invalid format: use 'csv' or 'xlsx'"));
+			}
+			return documentHelper.excelFormat(format);
+			
+		} catch (Exception e) {
+			 e.printStackTrace(); 
+	            return ResponseEntity
+	                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+	                    .body(Map.of("error", "Failed to generate file"));
+		}
+	}
+
+	@Override
+	public String saveDataFromExcel(MultipartFile file) {
+	    List<User> list = new ArrayList<>();
+
+	    try {
+	      
+	        if (file.getOriginalFilename().endsWith(".xlsx")) {
+	            System.out.println("xlsx ");
+	            list = documentHelper.saveDataFromExcel(file.getInputStream()); 
+	        } else if (file.getOriginalFilename().endsWith(".csv")) {
+	            System.out.println("csv");
+	            list = documentHelper.parseUsersFromCsv(file.getInputStream()); 
+	        } 
+        repo.saveAll(list);
+	        return "Data has been saved successfully.";	    } 
+	     catch (IOException e) {
+        e.printStackTrace();
+	        throw new RuntimeException("Failed to read the uploaded file. Please try again.");
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        throw new RuntimeException("Unexpected error while processing file: " + e.getMessage());
+	    }
+	}
+
+//	@Override
+
+	@Override
+	public boolean checkUserExist(String email) {
+		 return repo.existsByEmail(email);
 		
-		
+	}
+
+//	public List<UserProxy> getAllUsers() {
+//		
+//		List<User> alldataList = repo.findByIsActiveTrue();
+//		
+//		if(alldataList.isEmpty()) {
+//			throw new EmptyListException("List is empty","101");
+//		}
+//		else {
+//			return mapper.convertor(repo.findByIsActiveTrue(), UserProxy.class);
+//		}
+////		return alldataList;
+//	}
 	
 	}
-	}
+		
 
-//		 try {
-//	            // Decrypt the username and password using AES
-//	            String decryptedUsername = AESUtils.decrypt(logReq.getUsername(), SECRET_KEY);
-//	            String decryptedPassword = AESUtils.decrypt(logReq.getPassword(), SECRET_KEY);
-//
-//	            // Authenticate using decrypted credentials
-//	            Authentication authentication = new UsernamePasswordAuthenticationToken(decryptedUsername, decryptedPassword);
-//	            Authentication authResult = authtAuthenticationManager.authenticate(authentication);
-//
-//	            if (authResult.isAuthenticated()) {
-//	                // Fetch user from DB
-//	                User user = repo.findByUsername(decryptedUsername)
-//	                        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-//
-//	                // Generate JWT token
-//	                String token = jwtUtil.generateToken(decryptedUsername, user.getRole().toString());
-//
-//	                // Return response with token and role
-//	                return new LoginResponse(decryptedUsername, token, user.getRole().toString());
-//	            } else {
-//	                throw new RuntimeException("Authentication failed");
-//	            }
-//	        } catch (Exception e) {
-//	            throw new RuntimeException("Login failed", e);
-//	        }
-//	    }
-//	}
 
-//		System.err.println("impl");
-//		System.out.println(logReq.toString());
-//		Authentication auth=new UsernamePasswordAuthenticationToken(logReq.getUsername(), logReq.getPassword());
-//		Authentication authresult= authtAuthenticationManager.authenticate(auth);
-//		System.err.println(authresult);
-//		if(authresult.isAuthenticated())
-//		{
-//			User user = repo.findByUsername(logReq.getUsername())
-//				    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-//			        String role = user.getRole().toString();
-//			        String token = jwtUtil.generateToken(logReq.getUsername(), role);
-//			        return new LoginResponse(logReq.getUsername(),token, role);
-//	
-//		}
 
-//	return new LoginResponse(logReq.getUsername(),"Failed Request","No Role");
-//	}
-//	}
+
